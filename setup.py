@@ -29,6 +29,7 @@ setup_args = dict(
         "wheel",
         "black",
         "nbconvert",
+        "pip",
     ],
     packages=setuptools.find_packages(),
     classifiers=(

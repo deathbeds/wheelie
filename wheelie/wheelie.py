@@ -13,8 +13,12 @@ import shutil, nbconvert.nbconvertapp, tempfile, wheel.bdist_wheel
 from traitlets import *
 from pathlib import Path
 from itertools import chain
-from pip.commands import install as pip_installer
 from distutils.errors import DistutilsError
+
+try:
+    from pip.commands import install as pip_installer
+except:
+    from pip._internal.commands import install as pip_installer
 
 
 nbconvert.nbconvertapp.NbConvertApp.export_format.default_value = "exporter.BlackExporter" if __name__ == "__main__" else "black"
