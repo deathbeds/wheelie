@@ -27,6 +27,7 @@ setup_args = dict(
     install_requires=[
         "jupyter",
         "wheel",
+        "black:,"
         "nbconvert",
     ],
     packages=setuptools.find_packages(),
