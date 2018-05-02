@@ -60,7 +60,7 @@ def create_package_data(build_directory, package_data):
     return package_data
 
 
-# In[7]:
+# In[12]:
 
 
 class WheelApp(nbconvert.nbconvertapp.NbConvertApp):
@@ -73,14 +73,13 @@ class WheelApp(nbconvert.nbconvertapp.NbConvertApp):
     package_data = List(default_value=[])
     
     def convert_notebooks(self):
+        self.notebooks = [str(Path(self.root)/notebook) for notebook in self.notebooks]
         self.exporter = nbconvert.get_exporter(self.export_format)(config=self.config)
         self.initialize(argv=tuple())
         with tempfile.TemporaryDirectory() as path:
             path = Path(path)
             build_directory = path / self.name
                         
-            notebooks = self.notebooks    
-            
             for notebook in self.notebooks:
                 self.writer = nbconvert.writers.files.FilesWriter(
                     build_directory=str((build_directory / notebook).parent))
@@ -90,7 +89,6 @@ class WheelApp(nbconvert.nbconvertapp.NbConvertApp):
             move_files_with_parents(build_directory, self.root, *self.python_files, *self.package_data)
             create_modules(build_directory)                        
             
-            print(create_package_data(build_directory, self.package_data))
             distribution = setup.setup(
                 self.name, build_directory, wheel_dir=self.output,
                 package_data=create_package_data(build_directory, self.package_data),
@@ -111,11 +109,11 @@ Run "pip install {1} --no-cache-dir --upgrade" to reuse this package.""".format(
         return wheel
 
 
-# In[ ]:
+# In[11]:
 
 
 if __name__ == '__main__':
     get_ipython().system('jupyter nbconvert --to python wheelie.ipynb')
 
 
-# WheelApp(name='testable', notebooks='*.ipynb **/*.ipynb'.split(), python_files='*.py'.split(), package_data='data.txt'.split(), output='somewhere').convert_notebooks()
+# WheelApp(name='testable', notebooks='*.ipynb **/*.ipynb'.split(), python_files='*.py'.split(), package_data=[], output='somewhere').convert_notebooks()

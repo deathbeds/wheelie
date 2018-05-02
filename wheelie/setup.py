@@ -12,7 +12,7 @@ import shutil
 import os
 
 
-# In[4]:
+# In[6]:
 
 
 def setup(
@@ -34,9 +34,7 @@ def setup(
         def run(self):
             wheel.bdist_wheel.bdist_wheel.run(self)
             self.distribution.wheel_info = self.get_archive_basename() + '.whl'
-                    
-                
-    print(dict['package_data'])
+                                    
     return setuptools.Distribution({
             **defaults, 
             **dict,
