@@ -4,7 +4,6 @@
 # In[1]:
 
 
-
 try:
     from . import setup
 except: 
@@ -12,43 +11,39 @@ except:
     
 from IPython import get_ipython
 
-
-# In[2]:
-
-
-import sys, nbconvert.nbconvertapp, tempfile, setuptools.command, wheel.bdist_wheel
+import shutil, nbconvert.nbconvertapp, tempfile, wheel.bdist_wheel
 from traitlets import *
 from pathlib import Path
-import json
-import shutil
-import os
 from itertools import chain
+from pip.commands import install as pip_installer
 
 
-# In[3]:
+# In[2]:
 
 
 nbconvert.nbconvertapp.NbConvertApp.export_format.default_value = 'python'
 
 
-# In[4]:
+# In[3]:
 
 
 def move_files_with_parents(build_directory, root, *files, log=None):
-    for file in chain(
-        *(Path(root).glob(file) if '*' in file else (Path(file),) for file in files)
-    ):
-        (build_directory/(file).relative_to('.')).parent.mkdir(exist_ok=True)
-        shutil.copy(
-            file, build_directory / file.relative_to(root))
-        log and log.info("""Moving {file} to the package.""".format(file=file))
+    for file in map(Path, files):
+        to = build_directory / file.relative_to(root)
+        to.parent.mkdir(exist_ok=True)
+        if to.exists():
+            log and log.warning("""Skipping {file} copy because it has been created from a notebook and is already in the package""".format(file=file))            
+        else:
+            shutil.copy(file, to)
+            log and log.info("""Moving {file} to the package.""".format(file=file))
+        
 def create_modules(build_directory): 
     for file in filter(Path.is_dir, build_directory.iterdir()):
         init = file / '__init__.py'
         init.exists() or init.touch()
 
 
-# In[5]:
+# In[4]:
 
 
 def create_package_data(build_directory, package_data):
@@ -61,19 +56,40 @@ def create_package_data(build_directory, package_data):
     return package_data
 
 
-# In[6]:
+# In[5]:
 
 
-class WheelApp(nbconvert.nbconvertapp.NbConvertApp):
+def install_wheel(wheel):
+    install = pip_installer.InstallCommand(isolated=True)
+    install.run(*install.parse_args('{} --no-cache-dir --upgrade'.format(wheel).split()))
+
+
+# In[16]:
+
+
+class Wheelie(nbconvert.nbconvertapp.NbConvertApp):
     name = Unicode(allow_none=True).tag(config=True)
-    version = Unicode(default_value='0.0.1').tag(config=True)
+    version = Unicode(default_value="""0.0.1""").tag(config=True)
+    description = Unicode(default_value="""A Package automatically created from notebooks.""").tag(config=True)
     root = Unicode(default_value='.').tag(config=True)
     output = Unicode('.').tag(config=True)
+    install = Bool(default_value=False).tag(config=True)
+    python_files = List(default_value=[])
+    package_data = List(default_value=[])
     
-    python_files = List(default_value=[]).tag(config=True)
-    package_data = List(default_value=[]).tag(config=True)
+    def init_notebooks(self):
+        super().init_notebooks()
+        self.notebooks = list(filter(
+            bool,
+            (
+                file if file.endswith('.ipynb') 
+                else self.python_files.append(file) if file.endswith('.py') 
+                else self.package_data.append(file)
+                for file in self.notebooks)))
     
     def convert_notebooks(self):
+        wheel.bdist_wheel.logger = self.log
+        
         self.notebooks = [str(Path(self.root)/notebook) for notebook in self.notebooks]
         self.exporter = nbconvert.get_exporter(self.export_format)(config=self.config)
         self.initialize(argv=tuple())
@@ -87,40 +103,51 @@ class WheelApp(nbconvert.nbconvertapp.NbConvertApp):
                 self.convert_single_notebook(notebook)
             
             
-            move_files_with_parents(build_directory, self.root, *self.python_files, *self.package_data)
+            move_files_with_parents(build_directory, self.root, *self.python_files, *self.package_data, log=self.log)
             create_modules(build_directory)                        
             
             distribution = setup.setup(
                 self.name, build_directory, wheel_dir=self.output,
                 package_data=create_package_data(build_directory, self.package_data),
-                version=self.version)
-            
-#             # Add the ability to include python files and data files
-            
+                version=self.version,
+                description=self.description,
+            ) 
                   
             distribution.run_command('bdist_wheel')
-            wheel = Path(self.output) / distribution.wheel_info
-            self.log.info("""{0} created.  
-Run "pip install {1} --no-cache-dir --upgrade" to reuse this package.""".format(
-                distribution.wheel_info, wheel
-            ))
             
+        self.log.info("""Exporting {0}.""".format(distribution.wheel_info))
         
-        
-        return wheel
+        if self.install:
+            pip_installer.logger = self.log
+            install_wheel(distribution.wheel_info)
+            
+        return distribution.wheel_info
+    
+    __call__ = convert_notebooks
+    
+    def __enter__(self): return self
+    def __exit__(self, *args): self()
 
 
-# In[ ]:
+# In[21]:
 
 
-main = WheelApp.launch_instance
-
-
-# In[ ]:
-
+main = Wheelie.launch_instance
 
 if __name__ == '__main__':
     get_ipython().system('jupyter nbconvert --to python wheelie.ipynb')
 
 
-# WheelApp(name='testable', notebooks='*.ipynb **/*.ipynb'.split(), python_files='*.py'.split(), package_data=[], output='somewhere').convert_notebooks()
+# ## Context Manager Configuration
+
+#     with Wheelie() as package:
+#         package.name='testable'
+#         package.notebooks='*.ipynb *.py'.split()
+#         package.output='somewhere'
+#         package.install=True
+
+# ## Function call configuration
+#     
+#     Wheelie(name='testable', notebooks='*.ipynb *.py'.split(), output='somewhere', install=True)()
+
+# ## Command Line configuration

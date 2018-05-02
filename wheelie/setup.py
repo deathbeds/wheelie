@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import sys, nbconvert.nbconvertapp, tempfile, setuptools.command, wheel.bdist_wheel
@@ -12,7 +12,7 @@ import shutil
 import os
 
 
-# In[6]:
+# In[4]:
 
 
 def setup(
@@ -33,7 +33,7 @@ def setup(
         
         def run(self):
             wheel.bdist_wheel.bdist_wheel.run(self)
-            self.distribution.wheel_info = self.get_archive_basename() + '.whl'
+            self.distribution.wheel_info = str(Path(self.dist_dir) / (self.get_archive_basename() + '.whl'))
                                     
     return setuptools.Distribution({
             **defaults, 
