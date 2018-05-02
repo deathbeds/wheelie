@@ -38,6 +38,11 @@ setup_args = dict(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",),
     zip_safe=False,
+    entry_points={
+        'console_scripts': [
+            'jupyter-wheelie = wheelie:main',
+        ]
+    },
 )
 
 if __name__ == "__main__":

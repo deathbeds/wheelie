@@ -9,6 +9,8 @@ try:
     from . import setup
 except: 
     import setup
+    
+from IPython import get_ipython
 
 
 # In[2]:
@@ -29,7 +31,7 @@ from itertools import chain
 nbconvert.nbconvertapp.NbConvertApp.export_format.default_value = 'python'
 
 
-# In[5]:
+# In[4]:
 
 
 def move_files_with_parents(build_directory, root, *files, log=None):
@@ -46,31 +48,30 @@ def create_modules(build_directory):
         init.exists() or init.touch()
 
 
-# In[6]:
+# In[5]:
 
 
 def create_package_data(build_directory, package_data):
     from collections import defaultdict
     package_data = defaultdict(list)
     name = build_directory.stem
-    get_ipython().run_line_magic('ls', '-R $build_directory')
     for file in build_directory.rglob('*'):
         if file.is_file() and file.suffix != '.py':
             package_data['.'.join(file.relative_to(build_directory).parent.parts)].append(str(file))
     return package_data
 
 
-# In[12]:
+# In[6]:
 
 
 class WheelApp(nbconvert.nbconvertapp.NbConvertApp):
-    name = Unicode(allow_none=True)
-    version = Unicode(default_value='0.0.1')
-    root = Unicode(default_value='.')
-    output = Unicode('.')
+    name = Unicode(allow_none=True).tag(config=True)
+    version = Unicode(default_value='0.0.1').tag(config=True)
+    root = Unicode(default_value='.').tag(config=True)
+    output = Unicode('.').tag(config=True)
     
-    python_files = List(default_value=[])
-    package_data = List(default_value=[])
+    python_files = List(default_value=[]).tag(config=True)
+    package_data = List(default_value=[]).tag(config=True)
     
     def convert_notebooks(self):
         self.notebooks = [str(Path(self.root)/notebook) for notebook in self.notebooks]
@@ -109,7 +110,13 @@ Run "pip install {1} --no-cache-dir --upgrade" to reuse this package.""".format(
         return wheel
 
 
-# In[11]:
+# In[ ]:
+
+
+main = WheelApp.launch_instance
+
+
+# In[ ]:
 
 
 if __name__ == '__main__':
