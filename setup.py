@@ -9,6 +9,8 @@ here = Path(__file__).parent
 
 exec((here / name / "_version.py").read_text())
 
+print(setuptools.find_packages())
+
 setup_args = dict(
     name=name,
     version=__version__,
@@ -16,7 +18,7 @@ setup_args = dict(
     author_email="tony.fast@gmail.com",
     description="Create a shareable wheel with nbconvert.",
     long_description="""(here / "readme.md").read_text()""",
-    long_description_content_type='text/markdown',
+#    long_description_content_type='text/markdown',
     url="https://github.com/deathbeds/wheelie",
     python_requires=">=3.6",
     license="BSD-3-Clause",
@@ -41,7 +43,10 @@ setup_args = dict(
     entry_points={
         'console_scripts': [
             'jupyter-wheelie = wheelie:main',
-        ]
+        ],
+        'nbconvert.exporters': [
+            'black = wheelie.exporter:BlackExporter',
+        ],
     },
 )
 
