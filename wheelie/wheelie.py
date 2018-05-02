@@ -14,6 +14,7 @@ from traitlets import *
 from pathlib import Path
 from itertools import chain
 from distutils.errors import DistutilsError
+from setuptools import Distribution
 
 try:
     from pip.commands import install as pip_installer
@@ -61,6 +62,9 @@ def install_wheel(wheel):
     install.run(*install.parse_args("{} --no-cache-dir --upgrade".format(wheel).split()))
 
 
+from functools import partialmethod
+
+
 class Wheelie(nbconvert.nbconvertapp.NbConvertApp):
     name = Unicode(allow_none=True).tag(config=True)
     version = Unicode(default_value="""0.0.1""").tag(config=True)
@@ -72,7 +76,8 @@ class Wheelie(nbconvert.nbconvertapp.NbConvertApp):
     install = Bool(default_value=False).tag(config=True)
     python_files = List(default_value=[])
     package_data = List(default_value=[])
-    test = Unicode(allow_none=True)
+    test_suite = Unicode(allow_none=True)
+    distribution = Instance(klass=Distribution, allow_none=True)
 
     def init_notebooks(self):
         super().init_notebooks()
@@ -89,6 +94,10 @@ class Wheelie(nbconvert.nbconvertapp.NbConvertApp):
                 ),
             )
         )
+
+    def install(self):
+        pip_installer.logger = self.log
+        install_wheel(self.distribution.wheel_info)
 
     def convert_notebooks(self):
         wheel.bdist_wheel.logger = self.log
@@ -112,10 +121,10 @@ class Wheelie(nbconvert.nbconvertapp.NbConvertApp):
             create_modules(build_directory)
 
             opts = {}
-            if self.test:
-                opts["test_suite"] = self.test
+            if self.test_suite:
+                opts["test_suite"] = self.test_suite
 
-            distribution = setup.setup(
+            self.distribution = setup.setup(
                 self.name,
                 build_directory,
                 wheel_dir=self.output,
@@ -124,26 +133,33 @@ class Wheelie(nbconvert.nbconvertapp.NbConvertApp):
                 description=self.description,
                 **opts
             )
-            if self.test:
-                distribution.run_command("test")
 
-            distribution.run_command("bdist_wheel")
+            self.test_suite and self.test()
 
-        self.log.info("""Exporting {0}.""".format(distribution.wheel_info))
+            self.bdist_wheel()
 
-        if self.install:
-            pip_installer.logger = self.log
-            install_wheel(distribution.wheel_info)
+        self.install and self.install()
 
-        return distribution.wheel_info
+        return self.distribution
 
-    __call__ = convert_notebooks
+    convert = convert_notebooks
+
+    def run(self, command):
+        self.distribution.run_command(command)
+        return self
+
+    test = partialmethod(run, "test")
+
+    def bdist_wheel(self):
+        self.run("bdist_wheel")
+        self.log.info("""Exported {0}.""".format(self.distribution.wheel_info))
+        return self
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
-        self()
+        self.convert()
 
 
 main = Wheelie.launch_instance
