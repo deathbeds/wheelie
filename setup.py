@@ -17,12 +17,20 @@ setup_args = dict(
     author="deathbeds",
     author_email="tony.fast@gmail.com",
     description="Create a shareable wheel with nbconvert.",
-    long_description="""(here / "readme.md").read_text()""",
-#    long_description_content_type='text/markdown',
+
+    setup_requires=[
+        'pytest-runner',
+        'setuptools>=38.6.0',
+        'twine>=1.11.0',
+        'wheel>=0.31.0',
+    ],
+
+    long_description="""## Wheelie
+    """,
+    long_description_content_type='text/markdown',
     url="https://github.com/deathbeds/wheelie",
     python_requires=">=3.6",
     license="BSD-3-Clause",
-    setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     install_requires=[
         "jupyter",
